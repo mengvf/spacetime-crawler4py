@@ -1,4 +1,6 @@
 import re
+from lxml import etree, html
+from io import StringIO, BytesIO
 from urllib.parse import urlparse
 
 def scraper(url, resp):
@@ -7,7 +9,17 @@ def scraper(url, resp):
 
 def extract_next_links(url, resp):
     # Implementation requred.
-    return list()
+    out = []
+    parser = etree.HTMLParser()
+    if resp.raw_response:
+        tree = etree.parse(StringIO(resp.raw_response.content.decode(encoding='UTF-8')), parser)
+        links = (tree.xpath("//a"))
+        
+        for link in links:
+            if 'href' in link.attrib:
+                out.append(link.attrib['href'])
+    
+    return out
 
 def is_valid(url):
     try:
