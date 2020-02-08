@@ -2,6 +2,7 @@ import re
 from lxml import etree, html
 from io import StringIO, BytesIO
 from urllib.parse import urlparse
+from urllib import robotparser
 
 def scraper(url, resp):
     links = extract_next_links(url, resp)
@@ -9,22 +10,36 @@ def scraper(url, resp):
 
 def extract_next_links(url, resp):
     # Implementation requred.
+    #print(url, "**************************")
     out = []
-    parser = etree.HTMLParser()
-    if resp.raw_response:
-        tree = etree.parse(StringIO(resp.raw_response.content.decode(encoding='UTF-8')), parser)
-        links = (tree.xpath("//a"))
-        
-        for link in links:
-            if 'href' in link.attrib:
-                out.append(link.attrib['href'])
-    
+    parser = etree.HTMLParser(encoding='UTF-8')
+    try:
+        if resp.raw_response and (resp.status != 404) and (200 <= resp.status <= 599) :
+            tree = etree.parse(StringIO(resp.raw_response.content.decode(encoding='UTF-8')), parser)
+            tags = (tree.xpath("//a"))
+            #links = all tags
+            
+            for tag in tags:
+                if 'href' in tag.attrib:
+                    temp = tag.attrib['href']
+                    #temp is a string containing all urls in a file
+                    for i in temp.split():
+                        parsed = urlparse(url)
+                        #print(parsed.scheme + "://" + parsed.netloc + "/robots.txt")
+                        if i[0] == "/" and len(i) > 1 and i[1] != "/":
+                            out.append(parsed.scheme + "://" + parsed.netloc + i)
+                        elif parsed.fragment:
+                            print(parsed.fragment)
+                            out.append(i.split('#')[0])
+                        else:
+                            out.append(i)
+    except:
+        pass
     return out
-
 def is_valid(url):
     try:
         parsed = urlparse(url)
-        if parsed.scheme not in set(["http", "https"]):
+        if (parsed.scheme not in set(["http", "https"])) or not re.match(r".*\.(ics.uci.edu|cs.uci.edu|informatics.uci.edu|stat.uci.edu|today.uci.edu/department/information_computer_sciences)", parsed.netloc.lower()):
             return False
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
